@@ -2,6 +2,7 @@ package chathead.stade.com.chatheadmodule;
 
 import android.app.Dialog;
 import android.app.Service;
+import android.content.ClipboardManager;
 import android.content.Intent;
 import android.graphics.PixelFormat;
 import android.graphics.Point;
@@ -107,7 +108,7 @@ public class ChatHeadService extends Service {
                         params.y = initialY + (int) (event.getRawY() - initialTouchY);
                         windowManager.updateViewLayout(chatHead, params);
 
-                        if(ChatVisibleModule.isActivityVisible()) {
+                        if (ChatVisibleModule.isActivityVisible()) {
                             Intent i = new Intent("stop");
                             sendBroadcast(i);
                         }
@@ -123,13 +124,15 @@ public class ChatHeadService extends Service {
             @Override
             public void onClick(View v) {
                 Intent floatIntent = new Intent(ChatHeadService.this, TransparentActivity.class);
-                if(!ChatVisibleModule.isActivityVisible()) {
+                if (!ChatVisibleModule.isActivityVisible()) {
 
 
-                    Log.i("ChatHeadModuleLog", "clicked!");
+                    ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
 
                     floatIntent.putExtra("yCoords", params.y);
                     floatIntent.putExtra("xCoords", params.x);
+                    floatIntent.putExtra("word", clipboard.getText().toString());
+
                     floatIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     startActivity(floatIntent);
 
@@ -137,8 +140,6 @@ public class ChatHeadService extends Service {
                     Intent i = new Intent("stop");
                     sendBroadcast(i);
                 }
-
-
 
 
             }

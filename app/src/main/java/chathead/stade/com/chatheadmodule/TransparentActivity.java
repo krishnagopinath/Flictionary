@@ -11,6 +11,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.WindowManager;
+import android.widget.TextView;
 
 
 public class TransparentActivity extends Activity {
@@ -40,11 +41,16 @@ public class TransparentActivity extends Activity {
 
 
         int yCo = (Integer) intent.getIntExtra("yCoords", 0);
+        String word = intent.getStringExtra("word");
+
+        TextView txt = (TextView) findViewById(R.id.textView2);
+
+        txt.setText(word);
 
         WindowManager.LayoutParams params = getWindow().getAttributes();
         params.gravity = Gravity.TOP | Gravity.LEFT;
         params.x = 0;
-        params.y = yCo + 200;
+        params.y = yCo + 50;
     }
 
     @Override
