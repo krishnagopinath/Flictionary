@@ -132,6 +132,7 @@ public class ChatHeadService extends Service {
                     floatIntent.putExtra("yCoords", params.y);
                     floatIntent.putExtra("xCoords", params.x);
                     //THIS IS DEPRECATED AND MUST BE CHANGED
+                    //MAYBE LATER
                     floatIntent.putExtra("word", clipboard.getText().toString());
 
                     floatIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
