@@ -15,6 +15,8 @@ import android.view.WindowManager;
 import android.widget.ImageView;
 
 import java.util.Timer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class ChatHeadService extends Service {
 
@@ -124,20 +126,29 @@ public class ChatHeadService extends Service {
             @Override
             public void onClick(View v) {
                 Intent floatIntent = new Intent(ChatHeadService.this, TransparentActivity.class);
+
+
                 if (!ChatVisibleModule.isActivityVisible()) {
-
-
                     ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-
+                    String NoneSelected = null;
+                    if (clipboard.getText().toString() != null) {
+                        NoneSelected = clipboard.getText().toString();
+                    }
+                    floatIntent.putExtra("word", NoneSelected);
                     floatIntent.putExtra("yCoords", params.y);
                     floatIntent.putExtra("xCoords", params.x);
                     //THIS IS DEPRECATED AND MUST BE CHANGED
                     //MAYBE LATER
-                    floatIntent.putExtra("word", clipboard.getText().toString());
+
 
                     floatIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    Pattern p = Pattern.compile("[^a-z0-9 ]", Pattern.CASE_INSENSITIVE);
+                    Matcher m = p.matcher(NoneSelected);
+                    boolean b = m.find();
+                    if (b) {
+                        floatIntent.putExtra("word", "Selected text is not a String");
+                    }
                     startActivity(floatIntent);
-
                 } else {
                     Intent i = new Intent("stop");
                     sendBroadcast(i);
