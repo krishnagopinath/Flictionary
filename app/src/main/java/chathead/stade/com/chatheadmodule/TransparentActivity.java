@@ -13,10 +13,17 @@ import android.view.Gravity;
 import android.view.WindowManager;
 import android.widget.TextView;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 
 public class TransparentActivity extends Activity {
 
     private BroadcastReceiver receiver;
+    TextView txt;
+
+
+
 
     protected void onCreate(Bundle savedInstanceState) {
         ChatVisibleModule.activityResumed();
@@ -28,7 +35,7 @@ public class TransparentActivity extends Activity {
             @Override
             public void onReceive(Context context, Intent intent) {
                 //do something based on the intent's action
-                if(intent.getAction() == "stop"){
+                if (intent.getAction() == "stop") {
                     finish();
                 }
             }
@@ -39,13 +46,21 @@ public class TransparentActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_transparent);
 
+        txt = (TextView) findViewById(R.id.textView2);
 
-        int yCo = (Integer) intent.getIntExtra("yCoords", 0);
+        int yCo = intent.getIntExtra("yCoords", 0);
         String word = intent.getStringExtra("word");
 
-        TextView txt = (TextView) findViewById(R.id.textView2);
+        //check for null
+        if (word != null && word.length() != 0) {
+            //check for special characters and numbers
+            Pattern p = Pattern.compile("[^a-z0-9 ]", Pattern.CASE_INSENSITIVE);
+            Matcher m = p.matcher(word);
 
-        txt.setText(word);
+            if (m.find()) {
+                txt.setText(word);
+            }
+        }
 
         WindowManager.LayoutParams params = getWindow().getAttributes();
         params.gravity = Gravity.TOP | Gravity.LEFT;

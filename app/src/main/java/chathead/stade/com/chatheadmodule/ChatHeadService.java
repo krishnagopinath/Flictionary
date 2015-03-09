@@ -9,19 +9,42 @@ import android.graphics.Point;
 import android.os.IBinder;
 import android.util.Log;
 import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 
-import java.util.Timer;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import com.facebook.rebound.*;
 
-public class ChatHeadService extends Service {
+
+public class ChatHeadService extends Service implements SpringListener {
+
+    //clipboard init
+    ClipboardManager clipboard;
 
     private WindowManager windowManager;
-    private ImageView chatHead;
+    private LinearLayout chatHead;
+    private WindowManager.LayoutParams params;
+
+    private static double TENSION = 100;
+    private static double FRICTION = 20;
+
+    private Spring springObj;
+    private SpringSystem springSystem;
+
+
+    //TOUCH HANDLERS
+    private int initialX;
+    private int initialY;
+    private float initialTouchX;
+    private float initialTouchY;
+
+    private int[] mPos = {10, 300};
+
+    private int width;
+    private int height;
 
 
     @Override
@@ -40,12 +63,20 @@ public class ChatHeadService extends Service {
     public void onCreate() {
         super.onCreate();
 
+        springSystem = SpringSystem.create();
+        springObj = springSystem.createSpring();
+
+        springObj.addListener(this);
+        springObj.setSpringConfig(new SpringConfig(TENSION, FRICTION));
+
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
+        clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
 
-        chatHead = new ImageView(this);
-        chatHead.setImageResource(R.drawable.ic_launcher);
+        LayoutInflater inflater = (LayoutInflater) getSystemService(LAYOUT_INFLATER_SERVICE);
+        chatHead = (LinearLayout) inflater.inflate(R.layout.flickie, null, false);
 
-        final WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+
+        params = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.TYPE_PHONE,
@@ -53,14 +84,14 @@ public class ChatHeadService extends Service {
                 PixelFormat.TRANSLUCENT);
 
         params.gravity = Gravity.TOP | Gravity.LEFT;
-        params.x = 0;
-        params.y = 100;
+        params.x = mPos[0];
+        params.y = mPos[1];
 
         //get width
         Point size = new Point();
         windowManager.getDefaultDisplay().getSize(size);
-        final int width = size.x;
-        final int height = size.y;
+        width = size.x;
+        height = size.y;
 
 
         chatHead.setOnTouchListener(new View.OnTouchListener() {
@@ -85,22 +116,16 @@ public class ChatHeadService extends Service {
                         //NEEDS A BETTER WAY
                         if (Math.abs(initialTouchX - event.getRawX()) < 5) {
                             chatHead.performClick();
-                        }
-
-
-                        if (params.y < (height - (height * 10 / 100))) {
-                            //if x co-ordinates of floaty is greater than half the width
-                            if (params.x > width / 2) {
-                                //send it to the corner
-                                params.x = width;
-                            } else {
-                                //or send it to the origin
-                                params.x = 0;
-                            }
-                            windowManager.updateViewLayout(chatHead, params);
                         } else {
-                            //if taken to the bottom, then destroy service
-                            stopService(new Intent(chatHead.getContext(), ChatHeadService.class));
+
+
+                            if (params.y < (height - (height * 10 / 100))) {
+                                chatHead.getLocationOnScreen(mPos);
+                                springObj.setEndValue(1);
+                            } else {
+                                //if taken to the bottom, then destroy service
+                                stopSelf();
+                            }
                         }
 
                         return true;
@@ -129,25 +154,14 @@ public class ChatHeadService extends Service {
 
 
                 if (!ChatVisibleModule.isActivityVisible()) {
-                    ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-                    String NoneSelected = null;
-                    if (clipboard.getText().toString() != null) {
-                        NoneSelected = clipboard.getText().toString();
-                    }
-                    floatIntent.putExtra("word", NoneSelected);
-                    floatIntent.putExtra("yCoords", params.y);
-                    floatIntent.putExtra("xCoords", params.x);
+
                     //THIS IS DEPRECATED AND MUST BE CHANGED
                     //MAYBE LATER
-
-
+                    floatIntent.putExtra("word", clipboard.getText());
+                    floatIntent.putExtra("yCoords", params.y);
+                    floatIntent.putExtra("xCoords", params.x);
                     floatIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    Pattern p = Pattern.compile("[^a-z0-9 ]", Pattern.CASE_INSENSITIVE);
-                    Matcher m = p.matcher(NoneSelected);
-                    boolean b = m.find();
-                    if (b) {
-                        floatIntent.putExtra("word", "Selected text is not a String");
-                    }
+
                     startActivity(floatIntent);
                 } else {
                     Intent i = new Intent("stop");
@@ -162,4 +176,54 @@ public class ChatHeadService extends Service {
     }
 
 
+    @Override
+    public void onSpringUpdate(Spring spring) {
+        double value = spring.getCurrentValue();
+
+        //init condition variables
+        double xStart = 0;
+        double xEnd = 0;
+        double yStart = 0;
+        double yEnd = 0;
+
+        xStart = mPos[0];
+        if (mPos[0] <= width / 2) {
+            xEnd = 0.0;
+        } else {
+            xEnd = width;
+        }
+
+        yStart = mPos[1];
+        yEnd = mPos[1];
+        params.x = (int) (SpringUtil.mapValueFromRangeToRange(value, 0.0, 1.0, xStart, xEnd));
+        params.y = (int) (SpringUtil.mapValueFromRangeToRange(value, 0.0, 1.0, yStart, yEnd));
+
+        windowManager.updateViewLayout(chatHead, params);
+
+        //BAD
+        //VERY BAD
+        //MUST FIND A BETTER WAY
+        if (params.x == 0.0 || params.x == width) {
+            springSystem = SpringSystem.create();
+            springObj = springSystem.createSpring();
+            springObj.setSpringConfig(new SpringConfig(TENSION, FRICTION));
+            springObj.addListener(this);
+        }
+
+    }
+
+    @Override
+    public void onSpringAtRest(Spring spring) {
+
+    }
+
+    @Override
+    public void onSpringActivate(Spring spring) {
+
+    }
+
+    @Override
+    public void onSpringEndStateChange(Spring spring) {
+
+    }
 }
